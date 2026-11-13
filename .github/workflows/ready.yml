@@ -1,0 +1,47 @@
+name: Trace Windows packaged engine readiness
+on:
+  push:
+    branches: [codex/probe-windows-engine-ready]
+permissions:
+  contents: read
+jobs:
+  ready:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        source: [9c6f1d28f5d96fa73212432b440dda523aa8cd3e, c564683ec5b07a1f1a5289f228a2e88743dede9a]
+    steps:
+      - uses: actions/checkout@v4
+        with: {path: diagnostic, persist-credentials: false}
+      - uses: actions/checkout@v4
+        with:
+          repository: Forward-Future/scarlet
+          ref: ${{ matrix.source }}
+          persist-credentials: false
+          path: source
+      - uses: pnpm/action-setup@v4
+        with: {package_json_file: source/package.json}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.22.2
+          cache: pnpm
+          cache-dependency-path: source/pnpm-lock.yaml
+      - name: Build the exact SEA
+        working-directory: source
+        shell: pwsh
+        run: |
+          pnpm install --frozen-lockfile
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          pnpm --filter '@scarlet/server...' run build
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $dir = Join-Path $env:RUNNER_TEMP 'ready-resource'
+          pnpm --filter '@scarlet/server' build:sea -- --out "$dir\scarlet-engine.exe"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Launch with the workflow Git Bash environment
+        shell: bash
+        run: node diagnostic/ready.cjs bash
+      - name: Launch with the installer verifier PowerShell environment
+        shell: pwsh
+        run: node diagnostic/ready.cjs pwsh
