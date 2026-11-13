@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        source: [9c6f1d28f5d96fa73212432b440dda523aa8cd3e, c564683ec5b07a1f1a5289f228a2e88743dede9a]
+        source: [c564683ec5b07a1f1a5289f228a2e88743dede9a]
     steps:
       - uses: actions/checkout@v4
         with: {path: diagnostic, persist-credentials: false}
@@ -39,9 +39,17 @@ jobs:
           $dir = Join-Path $env:RUNNER_TEMP 'ready-resource'
           pnpm --filter '@scarlet/server' build:sea -- --out "$dir\scarlet-engine.exe"
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
-      - name: Launch with the workflow Git Bash environment
-        shell: bash
-        run: node diagnostic/ready.cjs bash
-      - name: Launch with the installer verifier PowerShell environment
+      - name: Start under native PowerShell first on a cold runner
         shell: pwsh
         run: node diagnostic/ready.cjs pwsh
+      - name: Snapshot restricted Git Bash and PowerShell startup environments
+        shell: bash
+        run: node diagnostic/env.cjs snapshot bash
+      - name: Probe PowerShell ACL startup under each changed environment key
+        shell: pwsh
+        run: |
+          node diagnostic/env.cjs snapshot pwsh
+          node diagnostic/env.cjs compare
+      - name: Recheck Git Bash with the system Windows PowerShell module directory first
+        shell: bash
+        run: node diagnostic/ready.cjs system-modules

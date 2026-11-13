@@ -13,6 +13,7 @@ const env = {SCARLET_TELEMETRY_ENABLED:'false', HOME:process.env.HOME ?? root};
 for (const k of keys) if (process.env[k]) env[k] = process.env[k];
 env.PATH = `${process.env.SystemRoot}\\System32;${process.env.SystemRoot}`;
 env.TEMP = root; env.TMP = root;
+if(shell === 'system-modules') env.PSModulePath = join(env.SystemRoot,'System32','WindowsPowerShell','v1.0','Modules') + ';' + env.PSModulePath;
 console.log(shell, 'MSYSTEM',process.env.MSYSTEM, 'HOME', env.HOME, 'SystemRoot',env.SystemRoot,'PSModulePath',env.PSModulePath,'available OS keys',Object.keys(env).join(','));
 const t=Date.now();
 const child=spawn(engine,['serve','--solo','--data',data,'--port','0'],{cwd:work,env,stdio:['pipe','pipe','pipe'],windowsHide:true});
